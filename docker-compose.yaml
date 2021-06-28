@@ -1,0 +1,62 @@
+version: "3"
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: customer-management/app
+    container_name: management_app
+    tty: true
+    restart: unless-stopped
+    environment:
+      APP_ENV: local
+      CONTAINER_ROLE: app
+      DB_HOST: management_db
+      DB_USERNAME: root
+      DB_PASSWORD: secret
+      DB_DATABASE: management
+      SESSION_DRIVER: redis
+      QUEUE_DRIVER: redis
+      REDIS_HOST: management_redis
+    volumes:
+      - ./:/var/www
+      - ./.docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+      
+  management_webserver:
+    build:
+      context: .
+      dockerfile: Dockerfile_Nginx
+    image: customer-management/nginx
+    container_name: management_webserver
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+    volumes:
+      - ./:/var/www
+      - ./.docker/nginx/conf.d/:/etc/nginx/conf.d/
+    depends_on:
+      - app
+
+  management_db:
+    image: mariadb:10.5.6
+    container_name: management_db
+    restart: unless-stopped
+    ports:
+      - "3312:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: management
+      MYSQL_USER: root
+      MYSQL_PASSWORD: secret
+    volumes:
+      - mariadbdata:/var/lib/mysql
+  
+  redis:
+    image: redis:4.0
+    container_name: management_redis
+    ports:
+      - "6392:6379"
+
+volumes:
+  mariadbdata:
+    driver: local
