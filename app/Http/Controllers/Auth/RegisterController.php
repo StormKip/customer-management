@@ -2,12 +2,17 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Http\Controllers\Controller;
-use App\Providers\RouteServiceProvider;
 use App\Models\User;
-use Illuminate\Foundation\Auth\RegistersUsers;
+use App\Models\Admin;
+use App\Models\Customer;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
+use App\Http\Controllers\Controller;
+use Illuminate\Auth\Events\Registered;
+use App\Providers\RouteServiceProvider;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Foundation\Auth\RegistersUsers;
 
 class RegisterController extends Controller
 {
@@ -24,12 +29,20 @@ class RegisterController extends Controller
 
     use RegistersUsers;
 
+
     /**
-     * Where to redirect users after registration.
+     * Where to redirect admin users after registration.
      *
      * @var string
      */
-    protected $redirectTo = RouteServiceProvider::HOME;
+    protected $redirectAdmin = '/admin/dashboard';
+
+    /**
+     * Where to redirect admin users after registration.
+     *
+     * @var string
+     */
+    protected $redirectCustomer = '/customer/dashboard';
 
     /**
      * Create a new controller instance.
@@ -64,11 +77,81 @@ class RegisterController extends Controller
      * @return \App\Models\User
      */
     protected function create(array $data)
+    {   
+        if(isset($data['admin']) && $data['admin']){
+            $admin = new Admin();
+            $admin->type = 'admin';
+            $admin->save();
+
+            $user = User::create([
+                'first_name' => $data['first_name'],
+                'last_name' => $data['last_name'],
+                'email' => $data['email'],
+                'password' => Hash::make($data['password']),
+                'userable_type' => 'App\admin',
+                'userable_id'  => $admin->id
+            ]);
+            $admin->user()->save($user);
+            $user->assignRole('admin');
+            $user->save();
+        }else{
+            $customer = new Customer();
+            $customer->save();
+
+            $user = User::create([
+                'first_name' => $data['first_name'],
+                'last_name' => $data['last_name'],
+                'email' => $data['email'],
+                'password' => Hash::make($data['password']),
+                'userable_type' => 'App\Customer',
+                'userable_id'  => $customer->id,
+            ]);
+            $customer->user()->save($user);
+            $user->assignRole('customer');
+            $user->save();
+        }
+        return $user;
+    }
+
+        /**
+     * Handle a registration request for the application.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
+     */
+    public function register(Request $request)
     {
-        return User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => Hash::make($data['password']),
-        ]);
+        $this->validator($request->all())->validate();
+
+        event(new Registered($user = $this->create($request->all())));
+
+        $this->guard()->login($user);
+
+        if ($response = $this->registered($request, $user)) {
+            return $response;
+        }
+        return $request->wantsJson()
+                    ? new JsonResponse([], 201)
+                        : ($user->hasRole('admin') ?  redirect($this->redirectAdmin) : redirect($this->redirectCustomer));
+    }
+    /**
+     * Show customer registration form.
+     *
+     * @return \Illuminate\View\View
+     */
+    public function showRegistrationForm()
+    {
+        return view('auth.register');
+    }
+
+    /**
+     * Show admin registration form.
+     *
+     * @return \Illuminate\View\View
+     */
+    public function showAdminRegistrationForm()
+    {
+        $admin = true;
+        return view('auth.register')->with('admin', $admin);
     }
 }

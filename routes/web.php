@@ -1,7 +1,10 @@
 <?php
 
+use App\Http\Controllers\Admin;
+use App\Http\Controllers\Customer;
 use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\Auth\RegisterController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -17,12 +20,32 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+
+// Customer Routes
+Route::group(['prefix' => 'customer'], function () {
+    Route::get('register',  [RegisterController::class, 'showRegistrationForm'])->name('register');
+    Route::post('register',  [RegisterController::class, 'register']);
+    Route::get('dashboard',  [RegisterController::class, 'showRegistrationForm'])->name('customer-dash');
+    Route::group(['middleware' => ['role:customer']], function () {
+        Route::get('dashboard', [Customer\DashboardController::class, 'index']);
+    });
+});
+
+
+// Admin Routes
+Route::group(['prefix' => 'admin'], function () {
+    Route::get('register',  [RegisterController::class, 'showAdminRegistrationForm']);
+    Route::post('register',  [RegisterController::class, 'register'])->name('admin-register');
+    Route::group(['middleware' => ['role:admin']], function () {
+        Route::get('dashboard',[Admin\DashboardController::class, 'index']);
+        Route::post('user/invite',[UserController::class, 'inviteNewUser']);
+    });
+});
+Route::group(['middleware' => 'guest'], function () {
+    Route::get('/signup/{token}', [UserController::class, 'signup']);
+    Route::post('/signup/{token}', [UserController::class, 'completeSignUp']);
+});
+
 Auth::routes();
 
-// Registration Routes...
-Route::get('customer/register', 'Auth\RegisterController@showRegistrationForm')->name('register');
-Route::post('customer/register', 'Auth\RegisterController@register');
-
-Route::get('admin/register', 'Auth\RegisterController@showAdminRegistrationForm')->name('register');
-Route::post('admin/register', 'Auth\RegisterController@register');
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+// Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');

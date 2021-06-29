@@ -18,9 +18,13 @@ class User extends Authenticatable
      * @var array
      */
     protected $fillable = [
-        'name',
+        'first_name',
+        'last_name',
+        'userable_id',
+        'userable_type',
         'email',
         'password',
+        'signup_link'
     ];
 
     /**
@@ -33,6 +37,10 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+    protected $appends = [
+        'role'
+    ];
+
     /**
      * The attributes that should be cast to native types.
      *
@@ -41,4 +49,21 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+    
+    /**
+     * Polymorphic relationship.
+     * @return array
+     */
+    public function userable()
+    {
+        return $this->morphTo()->with('roles');;
+    }
+
+    public function getRoleAttribute(){
+        if($this->hasRole('admin')){
+            return 'admin';
+        }else{
+            return 'customer';
+        }
+    }
 }

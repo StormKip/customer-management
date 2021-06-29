@@ -1,8 +1,10 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Customer;
 
+use Auth;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
 
 class DashboardController extends Controller
 {
@@ -17,12 +19,15 @@ class DashboardController extends Controller
     }
 
     /**
-     * Show the application dashboard.
+     * Show the customer dashboard.
      *
      * @return \Illuminate\Contracts\Support\Renderable
      */
     public function index()
     {
-        return view('home');
+        $user = Auth::user();
+        $name  = $user->first_name;
+        $surname = $user->last_name;
+        return view('customer.dashboard', compact('name','surname'));
     }
 }
